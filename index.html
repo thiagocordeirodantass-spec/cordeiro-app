@@ -1,0 +1,1114 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Fiscal Local — NF-e e CT-e</title>
+    <meta
+      name="description"
+      content="Consulta, armazenamento e gestão de NF-e e CT-e. Backend local em Node.js."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #f4f5f7;
+        --surface: #ffffff;
+        --surface-2: #fafbfc;
+        --ink: #0f172a;
+        --ink-2: #334155;
+        --muted: #64748b;
+        --line: #e2e8f0;
+        --line-strong: #cbd5e1;
+        --brand: #0b5fff;
+        --brand-dark: #0844c0;
+        --accent: #0f766e;
+        --warn: #b45309;
+        --error: #b91c1c;
+        --success: #15803d;
+        --radius: 8px;
+        --radius-sm: 6px;
+        --shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 12px rgba(15, 23, 42, 0.06);
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+      body {
+        font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+        background: var(--bg);
+        color: var(--ink);
+        font-size: 14px;
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+      }
+      a { color: var(--brand); text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      button { font: inherit; cursor: pointer; }
+      .mono { font-family: "JetBrains Mono", ui-monospace, monospace; }
+      .app { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+      @media (max-width: 900px) { .app { grid-template-columns: 1fr; } }
+      .side {
+        background: #0f172a; color: #e2e8f0; padding: 20px 16px;
+        position: sticky; top: 0; height: 100vh; overflow-y: auto;
+      }
+      @media (max-width: 900px) { .side { position: static; height: auto; } }
+      .side__brand { display: flex; align-items: center; gap: 10px; padding: 4px 8px 18px; border-bottom: 1px solid #1e293b; margin-bottom: 18px; }
+      .side__brand .logo { width: 32px; height: 32px; background: var(--brand); border-radius: 7px; display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 12px; }
+      .side__brand h1 { margin: 0; font-size: 15px; font-weight: 700; }
+      .side__brand small { display: block; color: #94a3b8; font-size: 11px; }
+      .side__section { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b; font-weight: 600; margin: 18px 8px 8px; }
+      .side__nav { display: flex; flex-direction: column; gap: 2px; }
+      .side__nav button { background: transparent; border: none; color: #cbd5e1; text-align: left; padding: 8px 10px; border-radius: 6px; font-size: 13.5px; font-weight: 500; display: flex; align-items: center; gap: 10px; transition: background 0.15s; }
+      .side__nav button:hover { background: #1e293b; color: #fff; }
+      .side__nav button.is-active { background: var(--brand); color: #fff; }
+      .side__nav .count { margin-left: auto; background: #1e293b; color: #94a3b8; font-size: 11px; padding: 1px 7px; border-radius: 999px; font-weight: 600; }
+      .side__nav button.is-active .count { background: rgba(255, 255, 255, 0.2); color: #fff; }
+      .side__foot { margin-top: auto; padding: 16px 8px 4px; font-size: 11.5px; color: #64748b; border-top: 1px solid #1e293b; }
+      .side__foot kbd { font-family: "JetBrains Mono", monospace; background: #1e293b; border: 1px solid #334155; border-radius: 3px; padding: 1px 5px; font-size: 10.5px; color: #cbd5e1; }
+      .side__status { display: flex; align-items: center; gap: 6px; font-size: 12px; padding: 8px 10px; }
+      .side__status::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #64748b; }
+      .side__status.is-online::before { background: var(--success); box-shadow: 0 0 0 3px rgba(21, 128, 61, 0.2); }
+      .side__status.is-offline::before { background: var(--error); }
+
+      .main { padding: 28px 32px 60px; max-width: 1280px; }
+      @media (max-width: 600px) { .main { padding: 20px 16px 40px; } }
+      .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; gap: 16px; flex-wrap: wrap; }
+      .crumbs { font-size: 12.5px; color: var(--muted); }
+      .crumbs strong { color: var(--ink); font-weight: 600; }
+      .topbar__actions { display: flex; gap: 8px; }
+
+      .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: var(--radius-sm); font-size: 13.5px; font-weight: 500; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); transition: background 0.15s, border-color 0.15s; }
+      .btn:hover { background: #f1f5f9; border-color: #94a3b8; }
+      .btn--primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+      .btn--primary:hover { background: var(--brand-dark); border-color: var(--brand-dark); }
+      .btn--ghost { background: transparent; border-color: transparent; color: var(--ink-2); }
+      .btn--ghost:hover { background: #e2e8f0; }
+      .btn--sm { padding: 5px 10px; font-size: 12.5px; }
+      .btn--icon { padding: 6px; width: 30px; height: 30px; justify-content: center; }
+
+      .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+      .card__head { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--line); gap: 12px; flex-wrap: wrap; }
+      .card__head h2 { margin: 0; font-size: 15px; font-weight: 600; }
+
+      .tools { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+      @media (max-width: 900px) { .tools { grid-template-columns: 1fr; } }
+      .tool { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; display: flex; flex-direction: column; gap: 10px; }
+      .tool h3 { margin: 0; font-size: 13.5px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+      .tool h3 .ico { width: 22px; height: 22px; border-radius: 5px; display: grid; place-items: center; background: #eff6ff; color: var(--brand); font-size: 13px; }
+      .tool p { margin: 0; font-size: 12.5px; color: var(--muted); }
+      .tool__field { margin-top: 4px; }
+      .tool__field label { display: block; font-size: 11.5px; font-weight: 600; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 5px; }
+      .input, .select, .textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--line-strong); border-radius: var(--radius-sm); font-size: 13px; background: var(--surface); color: var(--ink); font-family: inherit; }
+      .input:focus, .select:focus, .textarea:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px rgba(11, 95, 255, 0.12); }
+      .input.mono { letter-spacing: 0.02em; }
+      .textarea { min-height: 90px; resize: vertical; font-family: "JetBrains Mono", monospace; font-size: 12px; }
+      .dropzone { border: 1.5px dashed var(--line-strong); border-radius: var(--radius-sm); padding: 18px; text-align: center; color: var(--muted); cursor: pointer; transition: background 0.15s, border-color 0.15s; }
+      .dropzone:hover, .dropzone.is-drag { background: #eff6ff; border-color: var(--brand); color: var(--brand); }
+      .dropzone strong { color: var(--ink); display: block; font-size: 13.5px; margin-bottom: 2px; }
+      .dropzone small { font-size: 11.5px; }
+      .dropzone input[type="file"] { display: none; }
+
+      .tabs { display: flex; gap: 2px; background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--radius) var(--radius) 0 0; padding: 4px 4px 0; }
+      .tab { background: transparent; border: none; padding: 9px 16px; font-size: 13.5px; font-weight: 500; color: var(--muted); border-radius: 6px 6px 0 0; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+      .tab.is-active { background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-bottom-color: var(--surface); margin-bottom: -1px; font-weight: 600; }
+      .tab .pill { background: var(--line); color: var(--ink-2); font-size: 11px; padding: 1px 7px; border-radius: 999px; font-weight: 600; }
+      .tab.is-active .pill { background: var(--brand); color: #fff; }
+
+      .filters { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr auto; gap: 10px; padding: 14px 18px; background: var(--surface); border: 1px solid var(--line); border-top: none; }
+      @media (max-width: 900px) { .filters { grid-template-columns: 1fr 1fr; } .filters > :first-child { grid-column: 1 / -1; } }
+      .filters input, .filters select { padding: 7px 10px; border: 1px solid var(--line); border-radius: var(--radius-sm); font-size: 13px; background: var(--surface-2); }
+      .filters input:focus, .filters select:focus { outline: none; border-color: var(--brand); background: #fff; box-shadow: 0 0 0 3px rgba(11, 95, 255, 0.1); }
+      .tablewrap { background: var(--surface); border: 1px solid var(--line); border-top: none; border-radius: 0 0 var(--radius) var(--radius); overflow-x: auto; box-shadow: var(--shadow); }
+
+      table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 880px; }
+      thead th { text-align: left; font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); padding: 10px 14px; background: var(--surface-2); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 1; }
+      tbody td { padding: 12px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+      tbody tr { transition: background 0.1s; }
+      tbody tr:hover { background: #f8fafc; }
+      tbody tr.is-active { background: #eff6ff; }
+      td.mono { font-family: "JetBrains Mono", monospace; font-size: 12px; }
+      td.right { text-align: right; font-variant-numeric: tabular-nums; }
+      td.wrap { max-width: 240px; }
+      .chave { font-family: "JetBrains Mono", monospace; font-size: 11.5px; color: var(--muted); }
+      .status { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 999px; font-size: 11.5px; font-weight: 600; border: 1px solid; }
+      .status::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+      .status--ok { color: var(--success); background: #f0fdf4; border-color: #bbf7d0; }
+      .status--warn { color: var(--warn); background: #fffbeb; border-color: #fde68a; }
+      .status--err { color: var(--error); background: #fef2f2; border-color: #fecaca; }
+      .status--info { color: var(--brand); background: #eff6ff; border-color: #bfdbfe; }
+      .empty { padding: 60px 20px; text-align: center; color: var(--muted); }
+      .empty h3 { margin: 0 0 6px; color: var(--ink); font-size: 15px; }
+
+      .drawer { position: fixed; inset: 0 0 0 auto; width: min(720px, 100%); background: var(--surface); border-left: 1px solid var(--line); box-shadow: -10px 0 30px rgba(15, 23, 42, 0.1); transform: translateX(100%); transition: transform 0.25s; z-index: 100; display: flex; flex-direction: column; }
+      .drawer.is-open { transform: translateX(0); }
+      .drawer__head { display: flex; align-items: center; justify-content: space-between; padding: 16px 22px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--surface); z-index: 2; }
+      .drawer__head h2 { margin: 0; font-size: 16px; font-weight: 600; }
+      .drawer__head small { display: block; font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+      .drawer__body { padding: 18px 22px 32px; overflow-y: auto; flex: 1; }
+      .scrim { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.4); opacity: 0; pointer-events: none; transition: opacity 0.25s; z-index: 99; }
+      .scrim.is-open { opacity: 1; pointer-events: auto; }
+
+      .detail__section { margin-bottom: 24px; }
+      .detail__section h3 { margin: 0 0 10px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+      .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 18px; }
+      .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px 18px; }
+      @media (max-width: 600px) { .grid2, .grid3 { grid-template-columns: 1fr; } }
+      .field { display: flex; flex-direction: column; gap: 2px; }
+      .field label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+      .field .val { font-size: 13.5px; word-break: break-word; }
+      .field .val.mono { font-family: "JetBrains Mono", monospace; font-size: 12.5px; }
+      .field .val.big { font-size: 18px; font-weight: 600; }
+      .field .val.green { color: var(--success); }
+      .field .val.red { color: var(--error); }
+
+      .toast-wrap { position: fixed; top: 18px; right: 18px; display: flex; flex-direction: column; gap: 8px; z-index: 200; pointer-events: none; }
+      .toast { background: var(--ink); color: #fff; padding: 10px 16px; border-radius: var(--radius-sm); font-size: 13px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25); max-width: 360px; animation: slideIn 0.2s; pointer-events: auto; }
+      .toast--ok { background: var(--success); }
+      .toast--err { background: var(--error); }
+      .toast--warn { background: var(--warn); }
+      @keyframes slideIn { from { transform: translateX(20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+      .pill { display: inline-block; padding: 1px 7px; border-radius: 4px; font-size: 11px; font-weight: 600; background: #e2e8f0; color: var(--ink-2); }
+      .pill--blue { background: #dbeafe; color: #1e40af; }
+      .pill--green { background: #d1fae5; color: #065f46; }
+      .pill--amber { background: #fef3c7; color: #92400e; }
+
+      .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
+      @media (max-width: 700px) { .stats { grid-template-columns: 1fr 1fr; } }
+      .stat { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; }
+      .stat__label { font-size: 11.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; }
+      .stat__value { font-size: 28px; font-weight: 700; letter-spacing: -0.01em; margin-top: 6px; }
+      .stat__sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+      .consulta { background: #fffbeb; border: 1px solid #fde68a; border-radius: var(--radius); padding: 16px 18px; margin-bottom: 20px; }
+      .consulta h3 { margin: 0 0 8px; font-size: 14px; color: #92400e; font-weight: 600; }
+      .consulta p { margin: 0 0 8px; font-size: 12.5px; color: #78350f; }
+      .consulta .btn { background: #f59e0b; border-color: #f59e0b; color: #fff; }
+      .consulta .btn:hover { background: #d97706; border-color: #d97706; }
+
+      .modal { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); z-index: 300; display: none; align-items: center; justify-content: center; padding: 20px; }
+      .modal.is-open { display: flex; }
+      .modal__box { background: var(--surface); border-radius: var(--radius); max-width: 720px; width: 100%; max-height: 90vh; overflow: hidden; display: flex; flex-direction: column; }
+      .modal__head { padding: 16px 22px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; }
+      .modal__head h2 { margin: 0; font-size: 15px; font-weight: 600; }
+      .modal__body { padding: 22px; overflow-y: auto; }
+      .modal__body textarea { width: 100%; min-height: 360px; font-family: "JetBrains Mono", monospace; font-size: 12px; padding: 12px; border: 1px solid var(--line); border-radius: var(--radius-sm); resize: vertical; }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <aside class="side">
+        <div class="side__brand">
+          <div class="logo">FX</div>
+          <div>
+            <h1>Fiscal Local</h1>
+            <small>NF-e · CT-e</small>
+          </div>
+        </div>
+
+        <div class="side__section">Documentos</div>
+        <nav class="side__nav" aria-label="Navegação">
+          <button class="is-active" data-tab="lista" data-kind="ALL">
+            <span>📋</span> Todos <span class="count" id="countAll">0</span>
+          </button>
+          <button data-tab="lista" data-kind="NFE">
+            <span>📄</span> NF-e <span class="count" id="countNFe">0</span>
+          </button>
+          <button data-tab="lista" data-kind="CTE">
+            <span>🚚</span> CT-e <span class="count" id="countCTe">0</span>
+          </button>
+          <button data-tab="consultar">
+            <span>🔎</span> Consultar
+          </button>
+          <button data-tab="gerar">
+            <span>✨</span> Gerar XML
+          </button>
+        </nav>
+
+        <div class="side__section">Atalhos</div>
+        <nav class="side__nav">
+          <button data-filter="autorizado">
+            <span>✅</span> Autorizados <span class="count" id="countAut">0</span>
+          </button>
+          <button data-filter="cancelado">
+            <span>⚠️</span> Cancelados <span class="count" id="countCanc">0</span>
+          </button>
+        </nav>
+
+        <div class="side__foot">
+          <div class="side__status" id="serverStatus">Verificando servidor…</div>
+          <p style="margin: 8px 0 6px">Backend local em Node.js + SQLite.</p>
+          <p style="margin: 0">Sem certificado. Sem transmissão à SEFAZ.</p>
+        </div>
+      </aside>
+
+      <main class="main">
+        <div class="topbar">
+          <div class="crumbs">
+            <span>Fiscal</span> · <strong id="crumbTitle">Todos os documentos</strong>
+          </div>
+          <div class="topbar__actions">
+            <button class="btn" id="btnRefresh">Atualizar</button>
+            <button class="btn btn--primary" id="btnUploadTop">+ Importar XML</button>
+          </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats">
+          <div class="stat">
+            <div class="stat__label">Documentos</div>
+            <div class="stat__value" id="statTotal">0</div>
+            <div class="stat__sub">Armazenados localmente</div>
+          </div>
+          <div class="stat">
+            <div class="stat__label">NF-e</div>
+            <div class="stat__value" id="statNFe">0</div>
+            <div class="stat__sub">Modelo 55/65</div>
+          </div>
+          <div class="stat">
+            <div class="stat__label">CT-e</div>
+            <div class="stat__value" id="statCTe">0</div>
+            <div class="stat__sub">Modelo 57</div>
+          </div>
+          <div class="stat">
+            <div class="stat__label">Valor total</div>
+            <div class="stat__value" id="statValor">R$ 0,00</div>
+            <div class="stat__sub">Soma dos autorizados</div>
+          </div>
+        </div>
+
+        <!-- Painel de ferramentas -->
+        <section class="tools">
+          <div class="tool">
+            <h3><span class="ico">🔎</span> Consultar por chave</h3>
+            <p>Cole a chave de 44 dígitos. Validamos o DV (módulo 11) e mostramos o link público da SEFAZ.</p>
+            <div class="tool__field">
+              <label for="keyInput">Chave de acesso</label>
+              <input id="keyInput" class="input mono" type="text" inputmode="numeric" maxlength="44" placeholder="0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000" />
+            </div>
+            <div>
+              <button class="btn btn--primary btn--sm" id="btnSearchKey">Buscar</button>
+              <button class="btn btn--sm" id="btnLoadFromDB" style="margin-left:4px">Carregar do banco</button>
+            </div>
+          </div>
+
+          <div class="tool">
+            <h3><span class="ico">📄</span> Colar conteúdo do XML</h3>
+            <p>Cole o XML e processamos no backend (mais robusto, com extração completa).</p>
+            <textarea id="pasteArea" class="textarea" placeholder="<nfeProc xmlns=...>"></textarea>
+            <div>
+              <button class="btn btn--primary btn--sm" id="btnParsePaste">Processar XML</button>
+              <button class="btn btn--sm" id="btnPastePdf" style="margin-left:4px">Baixar PDF</button>
+            </div>
+          </div>
+
+          <div class="tool">
+            <h3><span class="ico">📥</span> Upload de arquivo(s)</h3>
+            <p>Selecione ou arraste um ou mais arquivos .xml. Processados em lote.</p>
+            <label class="dropzone" id="dropzone">
+              <strong>Clique ou arraste arquivos</strong>
+              <small>XMLs de NF-e (55/65) ou CT-e (57)</small>
+              <input type="file" id="fileInput" accept=".xml,text/xml,application/xml" multiple />
+            </label>
+            <div>
+              <button class="btn btn--sm" id="btnUploadPdf">📄 Enviar 1 arquivo e baixar PDF</button>
+            </div>
+            <input type="file" id="fileInputPdf" accept=".xml,text/xml,application/xml" style="display:none" />
+          </div>
+
+          <div class="tool">
+            <h3><span class="ico">🧾</span> Baixar PDF por número</h3>
+            <p>Busca no banco local pelo número do documento e baixa o PDF resumo.</p>
+            <div class="tool__field">
+              <label for="numeroInput">Número do documento</label>
+              <input id="numeroInput" class="input mono" type="text" inputmode="numeric" placeholder="Ex.: 388752" />
+            </div>
+            <div class="tool__field">
+              <label for="numeroKind">Tipo</label>
+              <select id="numeroKind" class="select">
+                <option value="">Todos</option>
+                <option value="NFE">NF-e</option>
+                <option value="CTE">CT-e</option>
+              </select>
+            </div>
+            <div>
+              <button class="btn btn--primary btn--sm" id="btnSearchNumero">Buscar e baixar PDF</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Tabs e filtros -->
+        <div class="tabs">
+          <button class="tab is-active" data-kind="ALL">Todos <span class="pill" id="tabAll">0</span></button>
+          <button class="tab" data-kind="NFE">NF-e <span class="pill" id="tabNFe">0</span></button>
+          <button class="tab" data-kind="CTE">CT-e <span class="pill" id="tabCTe">0</span></button>
+        </div>
+
+        <div class="filters">
+          <input id="search" type="text" placeholder="Buscar por remetente, destinatário, número, CNPJ, chave…" />
+          <select id="filterStatus">
+            <option value="">Todos os status</option>
+            <option value="autorizado">Autorizado</option>
+            <option value="cancelado">Cancelado</option>
+            <option value="denegado">Denegado</option>
+            <option value="pendente">Pendente</option>
+            <option value="rejeitado">Rejeitado</option>
+          </select>
+          <select id="filterUF">
+            <option value="">UF (todas)</option>
+          </select>
+          <input id="filterDate" type="date" />
+          <button class="btn btn--ghost" id="btnClearFilters">Limpar</button>
+        </div>
+
+        <div class="tablewrap">
+          <table id="table">
+            <thead>
+              <tr>
+                <th style="width: 36px"><input type="checkbox" id="selectAll" /></th>
+                <th>Tipo</th>
+                <th>Documento</th>
+                <th>Emissão</th>
+                <th>Remetente</th>
+                <th>Destinatário</th>
+                <th>Valor</th>
+                <th>Status</th>
+                <th style="width: 110px">Ações</th>
+              </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+          </table>
+          <div class="empty" id="empty">
+            <h3>Sem documentos carregados</h3>
+            <p>Use os botões acima para importar arquivos ou colar XML.</p>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <div class="scrim" id="scrim"></div>
+    <aside class="drawer" id="drawer" role="dialog" aria-modal="true">
+      <div class="drawer__head">
+        <div>
+          <h2 id="drawerTitle">Detalhes</h2>
+          <small id="drawerSub">—</small>
+        </div>
+        <div style="display: flex; gap: 6px">
+          <button class="btn btn--sm" id="btnViewXml">Ver XML</button>
+          <button class="btn btn--sm" id="btnDownload">Baixar XML</button>
+          <button class="btn btn--primary btn--sm" id="btnDownloadPdf">Baixar PDF</button>
+          <button class="btn btn--ghost btn--icon" id="btnCloseDrawer">✕</button>
+        </div>
+      </div>
+      <div class="drawer__body" id="drawerBody"></div>
+    </aside>
+
+    <div class="modal" id="modal">
+      <div class="modal__box">
+        <div class="modal__head">
+          <h2 id="modalTitle">XML</h2>
+          <button class="btn btn--ghost btn--icon" id="btnCloseModal">✕</button>
+        </div>
+        <div class="modal__body">
+          <textarea id="modalXml" readonly></textarea>
+          <div style="margin-top: 12px; display: flex; gap: 8px; justify-content: flex-end">
+            <button class="btn btn--sm" id="btnCopyXml">Copiar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal" id="pdfResultsModal">
+      <div class="modal__box">
+        <div class="modal__head">
+          <h2>Documentos encontrados</h2>
+          <button class="btn btn--ghost btn--icon" id="btnClosePdfResults">✕</button>
+        </div>
+        <div class="modal__body">
+          <p style="margin:0 0 12px;font-size:12.5px;color:var(--muted)">
+            Mais de um documento tem esse número. Escolha qual PDF baixar.
+          </p>
+          <div id="pdfResultsList" style="display:flex;flex-direction:column;gap:8px"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="toast-wrap" id="toastWrap" aria-live="polite"></div>
+
+    <script>
+      // ============================================================
+      //  Estado
+      // ============================================================
+      const API = ""; // mesmo host
+      const state = {
+        documents: [],
+        activeKind: "ALL",
+        activeFilter: "",
+        search: "",
+        filterStatus: "",
+        filterUF: "",
+        filterDate: "",
+        selectedId: null,
+        serverOnline: false,
+      };
+
+      // ============================================================
+      //  Helpers
+      // ============================================================
+      const fmtMoney = (v) => {
+        if (v == null || v === "") return "—";
+        const n = Number(v);
+        if (!isFinite(n)) return v;
+        return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+      };
+      const fmtCNPJ = (v) => {
+        if (!v) return "—";
+        const s = String(v).replace(/\D/g, "");
+        if (s.length === 14) return s.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
+        if (s.length === 11) return s.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+        return v;
+      };
+      function formatDateTime(s) {
+        if (!s) return "—";
+        const d = new Date(s);
+        if (isNaN(d)) return s;
+        return d.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+      }
+      function escapeHtml(s) {
+        return (s || "").replace(/[&<>"']/g, (c) => ({
+          "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+        }[c]));
+      }
+      function toast(msg, type = "ok") {
+        const wrap = document.getElementById("toastWrap");
+        const t = document.createElement("div");
+        t.className = `toast toast--${type}`;
+        t.textContent = msg;
+        wrap.appendChild(t);
+        setTimeout(() => {
+          t.style.transition = "opacity 0.2s, transform 0.2s";
+          t.style.opacity = "0";
+          t.style.transform = "translateX(20px)";
+          setTimeout(() => t.remove(), 200);
+        }, 2800);
+      }
+      async function api(path, opts = {}) {
+        const res = await fetch(API + path, {
+          ...opts,
+          headers: { Accept: "application/json", ...(opts.headers || {}) },
+        });
+        if (!res.ok) {
+          let err;
+          try { err = await res.json(); } catch { err = { error: res.statusText }; }
+          throw new Error(err.error || "Erro " + res.status);
+        }
+        return res.json();
+      }
+
+      // ============================================================
+      //  Render
+      // ============================================================
+      function applyFilters() {
+        return state.documents.filter((d) => {
+          if (state.activeKind !== "ALL" && d.kind !== state.activeKind) return false;
+          if (state.filterStatus && d.status !== state.filterStatus) return false;
+          if (state.filterUF && d.uf_emitente !== state.filterUF && d.uf_destino !== state.filterUF) return false;
+          if (state.filterDate) {
+            const dt = (d.data_emissao || "").slice(0, 10);
+            if (dt !== state.filterDate) return false;
+          }
+          if (state.activeFilter === "autorizado" && d.status !== "autorizado") return false;
+          if (state.activeFilter === "cancelado" && d.status !== "cancelado") return false;
+          if (state.search) {
+            const q = state.search.toLowerCase();
+            const hay = [d.numero, d.chave, d.remetente_nome, d.remetente_doc, d.destinatario_nome, d.destinatario_doc, d.uf_emitente, d.uf_destino]
+              .filter(Boolean).join(" ").toLowerCase();
+            if (!hay.includes(q)) return false;
+          }
+          return true;
+        });
+      }
+
+      function render() {
+        const tbody = document.getElementById("tbody");
+        const empty = document.getElementById("empty");
+        const docs = applyFilters();
+
+        // Contadores
+        document.getElementById("countAll").textContent = state.documents.length;
+        document.getElementById("countNFe").textContent = state.documents.filter(d => d.kind === "NFE").length;
+        document.getElementById("countCTe").textContent = state.documents.filter(d => d.kind === "CTE").length;
+        document.getElementById("countAut").textContent = state.documents.filter(d => d.status === "autorizado").length;
+        document.getElementById("countCanc").textContent = state.documents.filter(d => d.status === "cancelado").length;
+        document.getElementById("tabAll").textContent = state.documents.length;
+        document.getElementById("tabNFe").textContent = state.documents.filter(d => d.kind === "NFE").length;
+        document.getElementById("tabCTe").textContent = state.documents.filter(d => d.kind === "CTE").length;
+
+        // Stats
+        document.getElementById("statTotal").textContent = state.documents.length;
+        document.getElementById("statNFe").textContent = state.documents.filter(d => d.kind === "NFE").length;
+        document.getElementById("statCTe").textContent = state.documents.filter(d => d.kind === "CTE").length;
+        const valor = state.documents.filter(d => d.status === "autorizado").reduce((s, d) => s + (Number(d.valor_total) || 0), 0);
+        document.getElementById("statValor").textContent = fmtMoney(valor);
+
+        // UF
+        const ufSel = document.getElementById("filterUF");
+        const currentUF = state.filterUF;
+        const ufs = Array.from(new Set(state.documents.flatMap(d => [d.uf_emitente, d.uf_destino]).filter(Boolean))).sort();
+        ufSel.innerHTML = '<option value="">UF (todas)</option>' + ufs.map(u => `<option value="${u}">${u}</option>`).join("");
+        ufSel.value = currentUF;
+
+        if (!docs.length) {
+          tbody.innerHTML = "";
+          empty.style.display = "block";
+          return;
+        }
+        empty.style.display = "none";
+
+        tbody.innerHTML = docs.map((d) => {
+          const st = d.status || "pendente";
+          const stClass = `status--${st === "autorizado" ? "ok" : (st === "cancelado" || st === "denegado") ? "err" : "warn"}`;
+          const isActive = state.selectedId === d.id ? "is-active" : "";
+          const tipo = d.kind === "NFE" ? `<span class="pill pill--blue">NF-e</span>` : `<span class="pill pill--amber">CT-e</span>`;
+          return `
+            <tr data-id="${d.id}" class="${isActive}">
+              <td><input type="checkbox" class="rowSel" data-id="${d.id}"></td>
+              <td>${tipo}</td>
+              <td>
+                <div style="font-weight:600">${d.numero || "—"} <span class="pill">série ${d.serie || "—"}</span></div>
+                <div class="chave">${d.chave || "—"}</div>
+              </td>
+              <td>${formatDateTime(d.data_emissao)}</td>
+              <td class="wrap">
+                <div style="font-weight:500">${escapeHtml(d.remetente_nome) || "—"}</div>
+                <div class="muted" style="font-size:12px">${fmtCNPJ(d.remetente_doc)} · ${d.uf_emitente || ""}</div>
+              </td>
+              <td class="wrap">
+                <div style="font-weight:500">${escapeHtml(d.destinatario_nome) || "—"}</div>
+                <div class="muted" style="font-size:12px">${fmtCNPJ(d.destinatario_doc)} · ${d.uf_destino || ""}</div>
+              </td>
+              <td class="right">${fmtMoney(d.valor_total)}</td>
+              <td><span class="status ${stClass}">${st}</span></td>
+              <td>
+                <button class="btn btn--sm" data-action="view" data-id="${d.id}">Ver</button>
+                <button class="btn btn--sm btn--ghost" data-action="dl" data-id="${d.id}" title="Baixar XML">↓</button>
+                <button class="btn btn--sm btn--ghost" data-action="pdf" data-id="${d.id}" title="Baixar PDF">📄</button>
+              </td>
+            </tr>
+          `;
+        }).join("");
+      }
+
+      // ============================================================
+      //  Drawer
+      // ============================================================
+      async function openDrawer(id) {
+        try {
+          const doc = await api(`/api/docs/${id}`);
+          state.selectedId = id;
+          document.querySelectorAll("tbody tr").forEach(r => r.classList.remove("is-active"));
+          document.querySelector(`tbody tr[data-id="${id}"]`)?.classList.add("is-active");
+
+          document.getElementById("drawerTitle").textContent = `${doc.kind === "NFE" ? "NF-e" : "CT-e"} ${doc.numero || ""} · série ${doc.serie || ""}`;
+          document.getElementById("drawerSub").textContent = `Chave ${doc.chave || "—"} · ${doc.protocolo ? "Protocolo " + doc.protocolo : "Sem protocolo"}`;
+
+          document.getElementById("drawerBody").innerHTML = `
+            <div class="detail__section">
+              <h3>Status</h3>
+              <div class="grid3">
+                <div class="field"><label>Situação</label><div class="val">${doc.status || "—"}</div></div>
+                <div class="field"><label>Tipo</label><div class="val">${doc.kind === "NFE" ? "NF-e" : "CT-e"} · modelo ${doc.modelo || "—"}</div></div>
+                <div class="field"><label>Origem</label><div class="val">${doc.source || "—"}</div></div>
+              </div>
+            </div>
+            <div class="detail__section">
+              <h3>Identificação</h3>
+              <div class="grid3">
+                <div class="field"><label>Número</label><div class="val">${doc.numero || "—"}</div></div>
+                <div class="field"><label>Série</label><div class="val">${doc.serie || "—"}</div></div>
+                <div class="field"><label>Emissão</label><div class="val">${formatDateTime(doc.data_emissao)}</div></div>
+                <div class="field"><label>UF ini</label><div class="val">${doc.uf_emitente || "—"}</div></div>
+                <div class="field"><label>UF fim</label><div class="val">${doc.uf_destino || "—"}</div></div>
+                <div class="field"><label>Valor</label><div class="val big green">${fmtMoney(doc.valor_total)}</div></div>
+              </div>
+            </div>
+            <div class="detail__section">
+              <h3>Remetente</h3>
+              <div class="grid2">
+                <div class="field"><label>Nome</label><div class="val">${escapeHtml(doc.remetente_nome) || "—"}</div></div>
+                <div class="field"><label>CPF/CNPJ</label><div class="val mono">${fmtCNPJ(doc.remetente_doc)}</div></div>
+              </div>
+            </div>
+            <div class="detail__section">
+              <h3>Destinatário</h3>
+              <div class="grid2">
+                <div class="field"><label>Nome</label><div class="val">${escapeHtml(doc.destinatario_nome) || "—"}</div></div>
+                <div class="field"><label>CPF/CNPJ</label><div class="val mono">${fmtCNPJ(doc.destinatario_doc)}</div></div>
+              </div>
+            </div>
+            <div class="detail__section">
+              <h3>Chave de acesso</h3>
+              <div class="field">
+                <div class="val mono" style="word-break:break-all;background:#f1f5f9;padding:10px;border-radius:6px;border:1px solid #e2e8f0">${doc.chave || "—"}</div>
+              </div>
+            </div>
+          `;
+          document.getElementById("drawer").classList.add("is-open");
+          document.getElementById("scrim").classList.add("is-open");
+        } catch (e) {
+          toast(e.message, "err");
+        }
+      }
+
+      function closeDrawer() {
+        document.getElementById("drawer").classList.remove("is-open");
+        document.getElementById("scrim").classList.remove("is-open");
+        state.selectedId = null;
+        document.querySelectorAll("tbody tr").forEach(r => r.classList.remove("is-active"));
+      }
+
+      // ============================================================
+      //  Acoes
+      // ============================================================
+      async function loadAll() {
+        try {
+          state.documents = await api("/api/docs?limit=500");
+          state.serverOnline = true;
+          updateServerStatus(true);
+          render();
+        } catch (e) {
+          state.serverOnline = false;
+          updateServerStatus(false);
+          toast("Servidor offline. Rode o backend com 'npm start'.", "err");
+        }
+      }
+
+      function updateServerStatus(online) {
+        const el = document.getElementById("serverStatus");
+        el.className = `side__status ${online ? "is-online" : "is-offline"}`;
+        el.textContent = online ? "Servidor online" : "Servidor offline";
+      }
+
+      async function importText(xml, source = "paste") {
+        try {
+          const r = await api("/api/docs/import", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ xml, source }),
+          });
+          toast(`${r.kind === "NFE" ? "NF-e" : "CT-e"} ${r.summary.numero} importada.`, "ok");
+          await loadAll();
+        } catch (e) { toast(e.message, "err"); }
+      }
+
+      async function importFiles(files) {
+        const fd = new FormData();
+        for (const f of files) fd.append("files", f);
+        try {
+          const r = await api("/api/docs/upload", { method: "POST", body: fd });
+          const ok = r.processed.filter(p => p.ok).length;
+          const fail = r.processed.filter(p => !p.ok).length;
+          toast(`${ok} importado(s)${fail ? `, ${fail} com erro` : ""}.`, fail ? "warn" : "ok");
+          await loadAll();
+        } catch (e) { toast(e.message, "err"); }
+      }
+
+      function downloadXml(id) {
+        window.open(`${API}/api/docs/${id}/xml`, "_blank");
+      }
+
+      function downloadPdf(id) {
+        window.open(`${API}/api/docs/${id}/pdf`, "_blank");
+      }
+
+      // Baixa um blob retornado pelo backend, disparando o download no navegador
+      function saveBlob(blob, fileName) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 4000);
+      }
+
+      // Gera e baixa o PDF diretamente a partir de um texto XML (sem precisar importar antes)
+      async function downloadPdfFromXmlText(xml, fileNameHint = "documento") {
+        if (!xml || !xml.trim()) {
+          toast("Cole o XML primeiro.", "warn");
+          return;
+        }
+        try {
+          const res = await fetch(`${API}/api/pdf/from-xml`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ xml }),
+          });
+          if (!res.ok) {
+            let err;
+            try { err = await res.json(); } catch { err = { error: res.statusText }; }
+            throw new Error(err.error || "Erro ao gerar PDF");
+          }
+          const blob = await res.blob();
+          saveBlob(blob, `${fileNameHint}.pdf`);
+          toast("PDF gerado.", "ok");
+        } catch (e) {
+          toast(e.message, "err");
+        }
+      }
+
+      // Envia um arquivo .xml direto para o backend e baixa o PDF, sem precisar importar
+      async function downloadPdfFromFile(file) {
+        const fd = new FormData();
+        fd.append("file", file);
+        try {
+          const res = await fetch(`${API}/api/pdf/from-upload`, { method: "POST", body: fd });
+          if (!res.ok) {
+            let err;
+            try { err = await res.json(); } catch { err = { error: res.statusText }; }
+            throw new Error(err.error || "Erro ao gerar PDF");
+          }
+          const blob = await res.blob();
+          saveBlob(blob, `${(file.name || "documento").replace(/\.xml$/i, "")}.pdf`);
+          toast("PDF gerado.", "ok");
+        } catch (e) {
+          toast(e.message, "err");
+        }
+      }
+
+      // Busca documentos ja salvos pelo numero; se achar 1, baixa direto; se achar
+      // varios, mostra um modal para escolher; se nao achar nenhum, avisa.
+      async function searchNumeroAndDownloadPdf() {
+        const numero = document.getElementById("numeroInput").value.trim();
+        const kind = document.getElementById("numeroKind").value;
+        if (!numero) {
+          toast("Informe o numero do documento.", "warn");
+          return;
+        }
+        try {
+          const qs = kind ? `?kind=${encodeURIComponent(kind)}` : "";
+          const rows = await api(`/api/docs/numero/${encodeURIComponent(numero)}${qs}`);
+          if (!rows.length) {
+            toast("Nenhum documento com esse numero encontrado no banco local.", "warn");
+            return;
+          }
+          if (rows.length === 1) {
+            downloadPdf(rows[0].id);
+            return;
+          }
+          renderPdfResults(rows);
+        } catch (e) {
+          toast(e.message, "err");
+        }
+      }
+
+      function renderPdfResults(rows) {
+        const list = document.getElementById("pdfResultsList");
+        list.innerHTML = rows.map(d => `
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid var(--line);border-radius:6px;padding:10px 12px">
+            <div>
+              <div style="font-weight:600;font-size:13px">
+                ${d.kind === "NFE" ? "NF-e" : "CT-e"} ${d.numero || "—"} · série ${d.serie || "—"}
+                <span class="status ${d.status === "autorizado" ? "status--ok" : (d.status === "cancelado" || d.status === "denegado") ? "status--err" : "status--warn"}" style="margin-left:6px">${d.status || "—"}</span>
+              </div>
+              <div style="font-size:12px;color:var(--muted)">
+                ${escapeHtml(d.remetente_nome) || "—"} → ${escapeHtml(d.destinatario_nome) || "—"} · ${fmtMoney(d.valor_total)}
+              </div>
+              <div class="chave" style="margin-top:2px">${d.chave || "—"}</div>
+            </div>
+            <button class="btn btn--primary btn--sm" data-pdf-id="${d.id}">Baixar PDF</button>
+          </div>
+        `).join("");
+        document.getElementById("pdfResultsModal").classList.add("is-open");
+      }
+
+      async function searchByKey() {
+        const chave = document.getElementById("keyInput").value.replace(/\D/g, "");
+        if (chave.length !== 44) {
+          toast("A chave deve ter 44 digitos.", "warn");
+          return;
+        }
+        // Tenta carregar do banco
+        const found = state.documents.find(d => d.chave === chave);
+        if (found) {
+          openDrawer(found.id);
+          return;
+        }
+        // Senao, valida DV e mostra info do portal
+        try {
+          const tipo = (await api(`/api/chave/validar/${chave}`)).valida
+            ? null
+            : null;
+          const isNfe = chave[20] === "5" || chave[20] === "6"; // modelo 55 ou 65 na pos 20-21
+          const endpoint = isNfe ? "nfe" : "cte";
+          const info = await api(`/api/consulta/${endpoint}/${chave}`);
+          if (!info.ok) {
+            toast(info.error, "err");
+            return;
+          }
+          // Mostra modal com link publico
+          document.getElementById("modalTitle").textContent = `Consulta publica ${endpoint.toUpperCase()}`;
+          document.getElementById("modalXml").value =
+            `Chave: ${chave}\nDV valido: ${info.dvValido ? "Sim" : "Nao"}\n\n` +
+            `${info.nota}\n\n` +
+            `Link publico:\n${info.consultaPublicaUrl}\n` +
+            (info.manifestacaoUrl ? `\nLink manifestacao do destinatario:\n${info.manifestacaoUrl}\n` : "");
+          document.getElementById("modal").classList.add("is-open");
+        } catch (e) { toast(e.message, "err"); }
+      }
+
+      // ============================================================
+      //  Bindings
+      // ============================================================
+      function bind() {
+        // Sidebar
+        document.querySelectorAll(".side__nav button").forEach(b => {
+          b.addEventListener("click", () => {
+            if (b.dataset.tab === "lista") {
+              state.activeKind = b.dataset.kind || "ALL";
+              document.querySelectorAll(".side__nav button").forEach(x => x.classList.remove("is-active"));
+              b.classList.add("is-active");
+              document.querySelectorAll(".tab").forEach(t => t.classList.toggle("is-active", t.dataset.kind === state.activeKind));
+              const labels = { ALL: "Todos os documentos", NFE: "NF-e", CTE: "CT-e" };
+              document.getElementById("crumbTitle").textContent = labels[state.activeKind];
+              render();
+            }
+            if (b.dataset.tab === "consultar") {
+              document.getElementById("crumbTitle").textContent = "Consultar por chave";
+              document.getElementById("keyInput").focus();
+              document.querySelectorAll(".side__nav button").forEach(x => x.classList.remove("is-active"));
+              b.classList.add("is-active");
+            }
+            if (b.dataset.tab === "gerar") {
+              document.getElementById("crumbTitle").textContent = "Gerar XML";
+              openGenerateModal();
+              document.querySelectorAll(".side__nav button").forEach(x => x.classList.remove("is-active"));
+              b.classList.add("is-active");
+            }
+            if (b.dataset.filter) {
+              state.activeFilter = b.dataset.filter;
+              document.querySelectorAll(".side__nav button[data-filter]").forEach(x => x.classList.toggle("is-active", x === b));
+              render();
+            }
+          });
+        });
+
+        // Tabs
+        document.querySelectorAll(".tab").forEach(t => {
+          t.addEventListener("click", () => {
+            state.activeKind = t.dataset.kind;
+            document.querySelectorAll(".tab").forEach(x => x.classList.remove("is-active"));
+            t.classList.add("is-active");
+            document.querySelectorAll(".side__nav button").forEach(x => x.classList.remove("is-active"));
+            const map = { ALL: 0, NFE: 1, CTE: 2 };
+            document.querySelectorAll(".side__nav button")[map[state.activeKind]]?.classList.add("is-active");
+            const labels = { ALL: "Todos os documentos", NFE: "NF-e", CTE: "CT-e" };
+            document.getElementById("crumbTitle").textContent = labels[state.activeKind];
+            render();
+          });
+        });
+
+        // Topbar
+        document.getElementById("btnUploadTop").addEventListener("click", () => document.getElementById("fileInput").click());
+        document.getElementById("btnRefresh").addEventListener("click", loadAll);
+
+        // Filtros
+        document.getElementById("search").addEventListener("input", e => { state.search = e.target.value.trim(); render(); });
+        document.getElementById("filterStatus").addEventListener("change", e => { state.filterStatus = e.target.value; render(); });
+        document.getElementById("filterUF").addEventListener("change", e => { state.filterUF = e.target.value; render(); });
+        document.getElementById("filterDate").addEventListener("change", e => { state.filterDate = e.target.value; render(); });
+        document.getElementById("btnClearFilters").addEventListener("click", () => {
+          document.getElementById("search").value = "";
+          document.getElementById("filterStatus").value = "";
+          document.getElementById("filterUF").value = "";
+          document.getElementById("filterDate").value = "";
+          state.search = ""; state.filterStatus = ""; state.filterUF = ""; state.filterDate = ""; state.activeFilter = "";
+          document.querySelectorAll(".side__nav button[data-filter]").forEach(x => x.classList.remove("is-active"));
+          render();
+        });
+
+        // Tabela
+        document.getElementById("tbody").addEventListener("click", e => {
+          const btn = e.target.closest("button[data-action]");
+          if (btn) {
+            if (btn.dataset.action === "view") openDrawer(btn.dataset.id);
+            if (btn.dataset.action === "dl") downloadXml(btn.dataset.id);
+            if (btn.dataset.action === "pdf") downloadPdf(btn.dataset.id);
+            return;
+          }
+          const tr = e.target.closest("tr");
+          if (tr?.dataset.id) openDrawer(tr.dataset.id);
+        });
+
+        // Baixar PDF direto do XML colado (sem precisar importar)
+        document.getElementById("btnPastePdf").addEventListener("click", () => {
+          const txt = document.getElementById("pasteArea").value;
+          downloadPdfFromXmlText(txt);
+        });
+
+        // Baixar PDF a partir de 1 arquivo enviado (sem precisar importar)
+        document.getElementById("btnUploadPdf").addEventListener("click", () => document.getElementById("fileInputPdf").click());
+        document.getElementById("fileInputPdf").addEventListener("change", () => {
+          const f = document.getElementById("fileInputPdf").files[0];
+          if (f) downloadPdfFromFile(f);
+          document.getElementById("fileInputPdf").value = "";
+        });
+
+        // Buscar por numero e baixar PDF
+        document.getElementById("btnSearchNumero").addEventListener("click", searchNumeroAndDownloadPdf);
+        document.getElementById("numeroInput").addEventListener("keydown", e => { if (e.key === "Enter") searchNumeroAndDownloadPdf(); });
+
+        // Modal de resultados (busca por numero)
+        document.getElementById("btnClosePdfResults").addEventListener("click", () => document.getElementById("pdfResultsModal").classList.remove("is-open"));
+        document.getElementById("pdfResultsList").addEventListener("click", e => {
+          const btn = e.target.closest("button[data-pdf-id]");
+          if (btn) {
+            downloadPdf(btn.dataset.pdfId);
+            document.getElementById("pdfResultsModal").classList.remove("is-open");
+          }
+        });
+
+        document.getElementById("selectAll").addEventListener("change", e => {
+          document.querySelectorAll(".rowSel").forEach(c => (c.checked = e.target.checked));
+        });
+
+        // Drawer
+        document.getElementById("btnCloseDrawer").addEventListener("click", closeDrawer);
+        document.getElementById("scrim").addEventListener("click", closeDrawer);
+        document.getElementById("btnDownload").addEventListener("click", () => { if (state.selectedId) downloadXml(state.selectedId); });
+        document.getElementById("btnDownloadPdf").addEventListener("click", () => { if (state.selectedId) downloadPdf(state.selectedId); });
+        document.getElementById("btnViewXml").addEventListener("click", async () => {
+          if (!state.selectedId) return;
+          try {
+            const doc = await api(`/api/docs/${state.selectedId}`);
+            document.getElementById("modalTitle").textContent = `XML · ${doc.chave}`;
+            document.getElementById("modalXml").value = doc.xml || "(vazio)";
+            document.getElementById("modal").classList.add("is-open");
+          } catch (e) { toast(e.message, "err"); }
+        });
+
+        // Modal
+        document.getElementById("btnCloseModal").addEventListener("click", () => document.getElementById("modal").classList.remove("is-open"));
+        document.getElementById("btnCopyXml").addEventListener("click", () => {
+          const ta = document.getElementById("modalXml");
+          ta.select();
+          document.execCommand("copy");
+          toast("Copiado.", "ok");
+        });
+
+        // Buscar chave
+        document.getElementById("btnSearchKey").addEventListener("click", searchByKey);
+        document.getElementById("keyInput").addEventListener("keydown", e => { if (e.key === "Enter") searchByKey(); });
+        document.getElementById("keyInput").addEventListener("input", e => {
+          e.target.value = e.target.value.replace(/\D/g, "").slice(0, 44);
+        });
+        document.getElementById("btnLoadFromDB").addEventListener("click", () => {
+          const chave = document.getElementById("keyInput").value.replace(/\D/g, "");
+          const found = state.documents.find(d => d.chave === chave);
+          if (found) openDrawer(found.id);
+          else toast("Nao encontrado no banco local.", "warn");
+        });
+
+        // Colar XML
+        document.getElementById("btnParsePaste").addEventListener("click", () => {
+          const txt = document.getElementById("pasteArea").value;
+          if (!txt.trim()) { toast("Cole o XML primeiro.", "warn"); return; }
+          importText(txt, "paste");
+          document.getElementById("pasteArea").value = "";
+        });
+
+        // Upload
+        const fileInput = document.getElementById("fileInput");
+        fileInput.addEventListener("change", () => { importFiles(fileInput.files); fileInput.value = ""; });
+        const dz = document.getElementById("dropzone");
+        ["dragenter", "dragover"].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add("is-drag"); }));
+        ["dragleave", "drop"].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove("is-drag"); }));
+        dz.addEventListener("drop", e => { if (e.dataTransfer.files.length) importFiles(e.dataTransfer.files); });
+
+        // Atalho Ctrl+O
+        window.addEventListener("keydown", e => {
+          if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "o") {
+            e.preventDefault(); fileInput.click();
+          }
+          if (e.key === "Escape") {
+            document.getElementById("modal").classList.remove("is-open");
+            document.getElementById("pdfResultsModal").classList.remove("is-open");
+            closeDrawer();
+          }
+        });
+      }
+
+      // ============================================================
+      //  Modal "Gerar XML"
+      // ============================================================
+      function openGenerateModal() {
+        document.getElementById("modalTitle").textContent = "Gerar XML de exemplo";
+        document.getElementById("modalXml").value = `Preencha o JSON e clique em "Gerar" para ver o XML.
+
+Exemplo para NF-e:
+{
+  "numero": 1234,
+  "serie": 1,
+  "natOp": "VENDA DE MERCADORIA",
+  "emit": {
+    "CNPJ": "12345678000199",
+    "xNome": "EMPRESA EXEMPLO LTDA",
+    "IE": "123456789012",
+    "enderEmit": {
+      "xLgr": "AV BRASIL", "nro": "1000", "xBairro": "CENTRO",
+      "cMun": "3550308", "xMun": "SAO PAULO", "UF": "SP", "CEP": "01001000"
+    }
+  },
+  "dest": {
+    "CNPJ": "98765432000110",
+    "xNome": "CLIENTE EXEMPLO",
+    "enderDest": {
+      "xLgr": "RUA A", "nro": "100", "xBairro": "CENTRO",
+      "cMun": "3304557", "xMun": "RIO DE JANEIRO", "UF": "RJ", "CEP": "20000000"
+    }
+  },
+  "itens": [
+    { "cProd": "001", "xProd": "PRODUTO TESTE", "NCM": "84713012", "CFOP": "6102",
+      "uCom": "UN", "qCom": "1.0000", "vUnCom": "100.00", "vProd": "100.00" }
+  ],
+  "total": { "vProd": "100.00", "vNF": "100.00" }
+}
+
+Aviso: o XML gerado NAO e assinado. Para transmitir a SEFAZ, use um
+emissor homologado (ACBr, NFePHP) e importe o XML processado aqui.`;
+        document.getElementById("modal").classList.add("is-open");
+        // Substitui botao Copiar por "Gerar"
+        const oldBtn = document.getElementById("btnCopyXml");
+        oldBtn.textContent = "Gerar XML";
+        const newBtn = oldBtn.cloneNode(true);
+        oldBtn.parentNode.replaceChild(newBtn, oldBtn);
+        newBtn.addEventListener("click", async () => {
+          const txt = document.getElementById("modalXml").value;
+          const start = txt.indexOf("{");
+          if (start < 0) { toast("JSON nao encontrado no texto.", "warn"); return; }
+          try {
+            const json = JSON.parse(txt.slice(start));
+            const tipo = document.getElementById("modalTitle").textContent.includes("CT-e") ? "cte" : "nfe";
+            const r = await api(`/api/generate/${tipo}`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(json),
+            });
+            document.getElementById("modalXml").value = r.xml;
+            toast("XML gerado (chave " + r.chave + "). NAO e assinado.", "warn");
+          } catch (e) { toast("Erro: " + e.message, "err"); }
+        });
+      }
+
+      // ============================================================
+      //  Init
+      // ============================================================
+      bind();
+      loadAll();
+    </script>
+  </body>
+</html>

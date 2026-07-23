@@ -1,0 +1,60 @@
+# =============================================================================
+#  .gitignore — Cordeiro Sistema Fiscal
+# =============================================================================
+
+# Dependências
+node_modules/
+**/node_modules/
+
+# Banco de dados e dados locais do usuário (NÃO versionar)
+data/app.db
+data/app.db-shm
+data/app.db-wal
+data/avatars/
+data/xml/
+data/backups/
+data/mail.config.json
+data/meudanfe.config.json
+data/sefaz-provedor.config.json
+data/news.cache.json
+
+# Backups automáticos
+*.bak
+*.bak/
+backend.bak/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Variáveis de ambiente
+.env
+.env.local
+.env.*.local
+
+# IDEs / editores
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Builds / dist
+dist/
+build/
+out/
+
+# Windows
+[Bb]in/
+[Oo]bj/
+*.user
+*.suo
+
+# Coisas temporárias
+tmp/
+temp/
+.cache/
